@@ -9,6 +9,7 @@ import {
   causes,
 } from "./ui.mjs";
 import { stats } from "./engine.mjs";
+import { originSelect } from "./origin-filter.mjs";
 const meta = {
   单选题: ["list", "teal", "辨认唯一成立的结论，区分相近概念。"],
   多选题: ["stack", "lavender", "逐项判断，检查漏选与多选。"],
@@ -31,16 +32,26 @@ const pill = (x, i) =>
   '">' +
   esc(x) +
   "</span>";
-export function typePage(m, selected = "", level = 0, ch = 0) {
-  let s =
+export function drillQuestions(questions, { type, chapter, level, origin }) {
+  return questions.filter(
+    (q) =>
+      q.type === type &&
+      (!chapter || q.chapter === chapter) &&
+      (!level || q.difficulty === level) &&
+      (!origin || q.origin === origin),
+  );
+}
+export function typePage(m, { type, level, chapter: ch, origin, count }) {
+  const s =
     '<header class="pagehead"><div><h1>题型突破</h1><p>按考法专项练习，从基础辨析逐步进入计算、推导与作图。</p></div></header>';
-  if (!selected)
+  if (!type)
     return (
       s +
+      '<div class="filters">' + originSelect("type-origin", origin) + "</div>" +
       '<div class="typegrid">' +
       types
         .map((t) => {
-          const pool = m.qs.filter((q) => q.type === t),
+          const pool = drillQuestions(m.qs, { type: t, origin }),
             done = pool.filter((q) => m.hist.has(q.id)).length,
             [ic, col, desc] = meta[t];
           return (
@@ -68,16 +79,14 @@ export function typePage(m, selected = "", level = 0, ch = 0) {
         .join("") +
       "</div>"
     );
-  const all = m.qs.filter(
-      (q) => q.type === selected && (!ch || q.chapter === ch),
-    ),
+  const all = drillQuestions(m.qs, { type, chapter: ch, origin }),
     p = all.filter((q) => !level || q.difficulty === level);
   return (
     s +
     '<div class="box"><div class="sectionhead"><h2>' +
-    selected +
+    type +
     '专项</h2><button class="plain" data-action="drill-types">全部题型</button></div><p class="muted">' +
-    meta[selected][2] +
+    meta[type][2] +
     '</p><div class="filters" style="margin:15px 0"><select id="type-ch" aria-label="专项章节"><option value="0">全部章节</option>' +
     chapters
       .map(
@@ -105,13 +114,19 @@ export function typePage(m, selected = "", level = 0, ch = 0) {
           "</option>",
       )
       .join("") +
-    '</select><select id="type-n" aria-label="专项题数"><option value="5">5 题</option><option value="8" selected>8 题</option><option value="15">15 题</option></select><button class="btn primary" data-action="drill-start" ' +
+    "</select>" +
+    originSelect("type-origin", origin) +
+    '<select id="type-n" aria-label="专项题数">' +
+    [5, 8, 15]
+      .map((n) => `<option value="${n}"${n === count ? " selected" : ""}>${n} 题</option>`)
+      .join("") +
+    '</select><button class="btn primary" data-action="drill-start" ' +
     (p.length ? "" : "disabled") +
     ">" +
     icon("play", 15) +
-    '开始专项练习</button></div><p class="muted">匹配 ' +
-    p.length +
-    ' 道题。梯度练习按基础、进阶、综合排列。</p></div><div class="levelgrid">' +
+    '开始专项练习</button></div><p class="muted" aria-live="polite">' +
+    (p.length ? '匹配 ' + p.length + ' 道题。梯度练习按基础、进阶、综合排列。' : '当前组合没有题目，请调整筛选条件。') +
+    '</p></div><div class="levelgrid">' +
     [1, 2, 3]
       .map((l) => {
         const qs = all.filter((q) => q.difficulty === l);

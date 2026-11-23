@@ -26,6 +26,7 @@ import {
   numberValue,
 } from "./engine.mjs";
 import { rich, formula, markdown, questionStem } from "./deferred-notation.mjs";
+import { originSelect } from "./origin-filter.mjs";
 import { buildRoundPlan } from "./round-plan.mjs";
 import * as store from "./store.mjs";
 import {
@@ -37,7 +38,7 @@ import {
   configure,
 } from "./editor.mjs";
 
-import { typePage, reportPage, advice } from "./training.mjs";
+import { drillQuestions, typePage, reportPage, advice } from "./training.mjs";
 import {
   labRoute,
   labTabs,
@@ -65,10 +66,12 @@ import {
 } from "./exam.mjs";
 import { sketchRender, attachSketch } from "./sketch.mjs";
 import { makeOrders, ordered } from "./choice-order.mjs";
-let drillType = "",
-  drillLevel = 0,
-  drillChapter = 0,
-  clockStart = null;
+const drill = { type: "", level: 0, chapter: 0, origin: "", count: 8 };
+const chapterSetup = { type: "", topic: "", origin: "", count: 8 };
+const defaultFilter = {
+  chapter: 0, type: "", topic: "", origin: "", query: "", page: 1,
+};
+let clockStart = null;
 function tickOff() {
   if (clockStart !== null && session) {
     session.times ??= {};
@@ -180,10 +183,9 @@ let seed = [],
   planCount = 10,
   displayedPlan = null,
   guideQuery = "",
-  filter = { chapter: 0, type: "", topic: "", query: "", page: 1 },
+  filter = { ...defaultFilter },
   mistab = "pending",
-  chapterDetail = 0,
-  setupCount = 8;
+  chapterDetail = 0;
 let session = null,
   busy = false,
   toastTimer;
@@ -268,15 +270,15 @@ function navigate(page, reset = true) {
   tickOff();
   examVisibility(false);
   if (reset) {
-    filter = {
-      chapter: 0,
-      type: "",
-      topic: "",
-      query: "",
-      page: 1,
-    };
-    if (page === "chapters") chapterDetail = 0;
-    if (page === "types") drillType = "";
+    filter = { ...defaultFilter };
+    if (page === "chapters") {
+      chapterDetail = 0;
+      chapterSetup.origin = "";
+    }
+    if (page === "types") {
+      drill.type = "";
+      drill.origin = "";
+    }
   }
   menu = false;
   view = page;
@@ -354,11 +356,16 @@ function side() {
     '</small></div></button><footer class="author-credit">作者：<span lang="en">Hua Xiaowei —— ZJU</span></footer></div></aside>'
   );
 }
-function chapterCard(c, full = false) {
-  const qs = model.qs.filter((q) => q.chapter === c.id),
+function chapterCard(c, full = false, origin = "") {
+  const qs = model.qs.filter(
+      (q) => q.chapter === c.id && (!origin || q.origin === origin),
+    ),
+    ids = origin ? new Set(qs.map((q) => q.id)) : null,
     done = qs.filter((q) => model.hist.has(q.id)).length,
     rate = stats(
-      model.graded.filter((a) => model.byId.get(a.qid)?.chapter === c.id),
+      model.graded.filter((a) =>
+        ids ? ids.has(a.qid) : model.byId.get(a.qid)?.chapter === c.id,
+      ),
     ).rate;
   return (
     '<button class="chaptercard" data-action="chapter" data-id="' +
@@ -638,15 +645,18 @@ function dashboard() {
 function allChapters() {
   if (chapterDetail) {
     const c = chapter(chapterDetail),
-      pool = model.qs.filter((q) => q.chapter === c.id);
+      pool = model.qs.filter((q) => q.chapter === c.id),
+      matched = filteredChapter(pool);
     return (
       head(c.name, c.desc, button("所有章节", "all-chapters", "book")) +
       '<div class="box">' +
-      head2("专项练习", tag(pool.length + " 道题")) +
-      setupForm(pool) +
+      head2("专项练习", tag(matched.length + " 道题")) +
+      setupForm(pool, matched.length) +
       "</div>" +
       head2Inner("本章题目") +
-      pool.map(questionRow).join("")
+      (matched.length
+        ? matched.map(questionRow).join("")
+        : empty("search", "没有匹配的题目", "调整筛选条件后再试。"))
     );
   }
   return (
@@ -655,8 +665,11 @@ function allChapters() {
       "选择一个专题，按知识点和题型组织练习。",
       button("智能组卷", "adaptive", "spark", "primary"),
     ) +
+    '<div class="filters">' +
+    originSelect("setup-origin", chapterSetup.origin) +
+    "</div>" +
     '<div class="chaptergrid chapterpage">' +
-    chapters.map((c) => chapterCard(c, true)).join("") +
+    chapters.map((c) => chapterCard(c, true, chapterSetup.origin)).join("") +
     "</div>" +
     method()
   );
@@ -664,7 +677,7 @@ function allChapters() {
 function head2Inner(t) {
   return '<div class="sectionhead inner"><h2>' + esc(t) + "</h2></div>";
 }
-function setupForm(pool) {
+function setupForm(pool, matchedCount) {
   return (
     '<div class="filters"><select id="setup-type" aria-label="练习题型">' +
     opts(
@@ -672,7 +685,7 @@ function setupForm(pool) {
         ["", "全部题型"],
         ...[...new Set(pool.map((q) => q.type))].map((t) => [t, t]),
       ],
-      "",
+      chapterSetup.type,
     ) +
     '</select><select id="setup-topic" aria-label="练习知识点">' +
     opts(
@@ -680,9 +693,11 @@ function setupForm(pool) {
         ["", "全部知识点"],
         ...[...new Set(pool.map((q) => q.topic))].map((t) => [t, t]),
       ],
-      "",
+      chapterSetup.topic,
     ) +
-    '</select><select id="setup-n" aria-label="练习题数">' +
+    "</select>" +
+    originSelect("setup-origin", chapterSetup.origin) +
+    '<select id="setup-n" aria-label="练习题数">' +
     opts(
       [
         [5, "5 题"],
@@ -690,14 +705,22 @@ function setupForm(pool) {
         [15, "15 题"],
         [1000, "全部题目"],
       ],
-      setupCount,
+      chapterSetup.count,
     ) +
     "</select>" +
-    button("开始本章练习", "start-chapter", "play", "primary") +
-    '</div><p id="pool-info" class="muted">本章可选 ' +
-    pool.length +
-    " 道题，题量少于设定值时使用全部匹配题。</p>"
+    button(
+      "开始本章练习", "start-chapter", "play", "primary",
+      matchedCount ? "" : "disabled",
+    ) +
+    '</div><p id="pool-info" class="muted" aria-live="polite">' +
+    chapterPoolInfo(matchedCount) +
+    "</p>"
   );
+}
+function chapterPoolInfo(count) {
+  return count
+    ? `符合条件 ${count} 道，本轮将选取 ${Math.min(count, chapterSetup.count)} 道。`
+    : "当前组合没有题目，请调整筛选条件。";
 }
 function method() {
   return '<details class="method"><summary>下一轮练习怎样选题？</summary><p>先根据各知识点累计正确率排序，优先选择最近答错和较久未练的题，再加入未练题。刚刚答对的题会降低优先级，同一轮中每道题只出现一次。</p></details>';
@@ -778,7 +801,9 @@ function filters(pool) {
     opts([["", "全部题型"], ...types.map((t) => [t, t])], filter.type) +
     '</select><select aria-label="筛选知识点" id="filter-topic">' +
     opts([["", "全部知识点"], ...topics.map((t) => [t, t])], filter.topic) +
-    "</select></div>"
+    "</select>" +
+    originSelect("filter-origin", filter.origin) +
+    "</div>"
   );
 }
 function matches(q) {
@@ -787,6 +812,7 @@ function matches(q) {
     (!+filter.chapter || q.chapter === +filter.chapter) &&
     (!filter.type || q.type === filter.type) &&
     (!filter.topic || q.topic === filter.topic) &&
+    (!filter.origin || q.origin === filter.origin) &&
     (!query ||
       [q.id, q.stem, q.topic, ...q.options]
         .join(" ")
@@ -806,7 +832,8 @@ function baseList() {
   );
 }
 function recordList() {
-  const pool = baseList().filter(matches),
+  const records = baseList(),
+    pool = records.filter(matches),
     pagesNum = Math.max(1, Math.ceil(pool.length / 10));
   filter.page = Math.min(filter.page, pagesNum);
   return (
@@ -824,7 +851,7 @@ function recordList() {
           .join("")
       : empty(
           view === "bank" ? "search" : mistab === "fav" ? "star" : "errors",
-          view === "bank"
+          view === "bank" || records.length
             ? "没有匹配的题目"
             : mistab === "fav"
               ? "暂无收藏题目"
@@ -833,9 +860,11 @@ function recordList() {
                 : "暂无待巩固错题",
           view === "bank"
             ? "调整筛选条件，或录入一道新题。"
-            : mistab === "fav"
-              ? "点击题目旁的星标即可收藏。"
-              : "练习后，这里会按最近一次作答更新。",
+            : records.length
+              ? "调整筛选条件后再试。"
+              : mistab === "fav"
+                ? "点击题目旁的星标即可收藏。"
+                : "练习后，这里会按最近一次作答更新。",
         )) +
     (pagesNum > 1
       ? '<div class="pager">' +
@@ -1461,7 +1490,7 @@ const renderers = {
     '<div class="tools">' +
     button("AI 复习建议", "ai-review", "spark", "small") +
     "</div>",
-  types: () => typePage(model, drillType, drillLevel, drillChapter),
+  types: () => typePage(model, drill),
   lab: () => labPage(labState, labReturn),
   tutor: () => tutorShell(tutorReturn),
   exam: examPage,
@@ -1561,12 +1590,13 @@ async function submit(grade) {
     busy = false;
   }
 }
-function filteredChapter() {
-  return model.qs.filter(
+function filteredChapter(pool = model.qs) {
+  return pool.filter(
     (q) =>
       q.chapter === chapterDetail &&
-      (!get("setup-type")?.value || q.type === get("setup-type").value) &&
-      (!get("setup-topic")?.value || q.topic === get("setup-topic").value),
+      (!chapterSetup.type || q.type === chapterSetup.type) &&
+      (!chapterSetup.topic || q.topic === chapterSetup.topic) &&
+      (!chapterSetup.origin || q.origin === chapterSetup.origin),
   );
 }
 function move(i) {
@@ -1690,26 +1720,19 @@ async function handle(el) {
       openInlineTutor(labTutor(labObservation(labState, get("lab-stage"))), el);
       break;
     case "drill-type":
-      drillType = el.dataset.type;
-      drillLevel = 0;
-      drillChapter = 0;
+      Object.assign(drill, { type: el.dataset.type, level: 0, chapter: 0, count: 8 });
       render();
       break;
     case "drill-types":
-      drillType = "";
+      drill.type = "";
       render();
       break;
     case "drill-start":
       start(
-        model.qs.filter(
-          (q) =>
-            q.type === drillType &&
-            (!drillChapter || q.chapter === drillChapter) &&
-            (!drillLevel || q.difficulty === drillLevel),
-        ),
-        drillType + "专项",
-        +get("type-n").value,
-        !drillLevel,
+        drillQuestions(model.qs, drill),
+        drill.type + "专项",
+        drill.count,
+        !drill.level,
       );
       break;
     case "advice-start": {
@@ -1803,6 +1826,8 @@ async function handle(el) {
       break;
     case "chapter":
       chapterDetail = +id;
+      Object.assign(chapterSetup, { type: "", topic: "" });
+      if (view !== "chapters") chapterSetup.origin = "";
       navigate("chapters", false);
       break;
     case "all-chapters":
@@ -1825,11 +1850,10 @@ async function handle(el) {
       );
       break;
     case "start-chapter":
-      setupCount = +get("setup-n").value;
       start(
         filteredChapter(),
         chapter(chapterDetail).name + "专项",
-        setupCount,
+        chapterSetup.count,
       );
       break;
     case "start-filter":
@@ -1907,7 +1931,7 @@ async function handle(el) {
       break;
     case "mistab":
       mistab = id;
-      filter = { chapter: 0, topic: "", type: "", query: "", page: 1 };
+      filter = { ...defaultFilter, origin: filter.origin };
       render();
       break;
     case "guide-mode":
@@ -2033,37 +2057,39 @@ document.addEventListener("change", (e) => {
     get("plan-size")?.focus();
     return;
   }
-  if (t.id === "type-ch") {
-    drillChapter = +t.value;
+  if (t.id === "type-n") drill.count = +t.value;
+  if (["type-ch", "type-level", "type-origin"].includes(t.id)) {
+    if (t.id === "type-ch") drill.chapter = +t.value;
+    else if (t.id === "type-level") drill.level = +t.value;
+    else drill.origin = t.value;
     render();
+    get(t.id)?.focus();
   }
-  if (t.id === "type-level") {
-    drillLevel = +t.value;
-    render();
-  }
-  if (["filter-ch", "filter-type", "filter-topic"].includes(t.id)) {
+  if (["filter-ch", "filter-type", "filter-topic", "filter-origin"].includes(t.id)) {
     if (t.id === "filter-ch") {
       filter.chapter = +t.value;
       filter.topic = "";
     } else if (t.id === "filter-type") filter.type = t.value;
+    else if (t.id === "filter-origin") filter.origin = t.value;
     else filter.topic = t.value;
     filter.page = 1;
     render();
+    get(t.id)?.focus();
   }
   if (t.id === "guide-ch") {
     guideCh = +t.value;
     render();
   }
-  if (t.id.startsWith("setup-")) {
-    const n = filteredChapter().length;
-    get("pool-info").textContent = n
-      ? "符合条件 " +
-        n +
-        " 道，本轮将选取 " +
-        Math.min(n, Number(get("setup-n").value)) +
-        " 道。"
-      : "当前组合没有题目，请调整条件。";
-    document.querySelector('[data-action="start-chapter"]').disabled = !n;
+  if (t.id === "setup-n") {
+    chapterSetup.count = +t.value;
+    get("pool-info").textContent = chapterPoolInfo(filteredChapter().length);
+  }
+  if (["setup-type", "setup-topic", "setup-origin"].includes(t.id)) {
+    if (t.id === "setup-type") chapterSetup.type = t.value;
+    else if (t.id === "setup-topic") chapterSetup.topic = t.value;
+    else chapterSetup.origin = t.value;
+    render();
+    get(t.id)?.focus();
   }
 });
 async function boot() {
