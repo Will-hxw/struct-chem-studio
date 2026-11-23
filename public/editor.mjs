@@ -555,6 +555,7 @@ export function importer() {
               "reason",
               "exam",
               "dialogue",
+              "dialogue-thread",
             ].includes(e.kind) ||
             !Number.isSafeInteger(e.at) ||
             !e.data ||

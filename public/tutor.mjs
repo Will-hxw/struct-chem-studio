@@ -1,8 +1,15 @@
 import { prepareScreenshot } from "./tutor-image.mjs";
 import { chapter, esc, formOf, icon, letters } from "./ui.mjs";
 
-import { events as savedEvents, add as saveEvent } from "./store.mjs";
+import {
+  events as savedEvents,
+  add as saveEvent,
+  onTutorHistory,
+  isDeletedChat,
+} from "./store.mjs";
 import { rich, markdown } from "./deferred-notation.mjs";
+import { modal, close } from "./editor.mjs";
+import { chatHistory, chatPrefix, isChatThread, legacyThread } from "./tutor-history.mjs";
 
 const prompts = {
   hint: "请只给我下一步提示，让我自己完成这道题。",
@@ -166,12 +173,163 @@ export function reviewTutor(model, round, candidates = null, apply = null) {
   };
 }
 export const generalTutor = {
-  id: "自由答疑",
+  id: legacyThread,
   mode: "ask",
   context: {},
   title: "结构化学答疑",
   subtitle: "可以问一个概念、核对一段推导，或把卡住的那一步写下来。",
 };
+let activeChat;
+const newChatId = () => chatPrefix + crypto.randomUUID();
+
+export function mountChatWorkspace(host) {
+  host.innerHTML =
+    '<div class="chat-toolbar"><button type="button" class="btn small chat-new">' +
+    icon("plus", 16) + '新建对话</button><button type="button" class="btn small chat-list">' +
+    icon("clock", 16) + '历史对话</button><span class="chat-caption"></span></div>' +
+    '<div class="chat-body"></div><p class="chat-notice" role="status"></p>';
+  const body = host.querySelector(".chat-body");
+  const create = host.querySelector(".chat-new");
+  const history = host.querySelector(".chat-list");
+  const caption = host.querySelector(".chat-caption");
+  const notice = host.querySelector(".chat-notice");
+  const date = new Intl.DateTimeFormat("zh-CN", {
+    month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit",
+  });
+  const entries = () => chatHistory(savedEvents());
+  const defaultChat = () => entries()[0]?.id
+    ?? (isDeletedChat(legacyThread) ? newChatId() : legacyThread);
+  let mounted = true, dispose;
+
+  function refreshTitle() {
+    caption.textContent = entries().find((chat) => chat.id === activeChat)?.title || "新对话";
+  }
+
+  function openChat(id, focus = false) {
+    dispose?.();
+    notice.textContent = "";
+    activeChat = id;
+    refreshTitle();
+    dispose = mountTutor(body, { ...generalTutor, id });
+    if (focus) body.querySelector("textarea")?.focus();
+  }
+
+  function confirmDeletion(ids, selection) {
+    const dlg = modal(
+      ids.length === 1 ? "删除对话" : "删除所选对话",
+      '<p>将永久删除这 ' + ids.length + ' 个对话及其中的记录。</p>' +
+      '<p class="chat-notice" role="status"></p>' +
+      '<div class="formactions"><button type="button" class="btn chat-cancel">取消</button>' +
+      '<button type="button" class="btn chat-danger chat-confirm">删除</button></div>',
+    );
+    const confirm = dlg.querySelector(".chat-confirm");
+    dlg.querySelector(".chat-cancel").onclick = () => openHistory(selection);
+    confirm.onclick = async () => {
+      confirm.disabled = true;
+      try {
+        await saveEvent("dialogue-delete", { threads: ids });
+        if (mounted && dlg.open && confirm.isConnected) openHistory();
+      } catch {
+        if (confirm.isConnected) {
+          dlg.querySelector(".chat-notice").textContent = "删除失败，请重试。";
+          confirm.disabled = false;
+        }
+      }
+    };
+  }
+
+  function openHistory(preselection = new Set()) {
+    const chats = entries();
+    if (!chats.length) {
+      modal("历史对话", "<p>暂无历史对话。</p>");
+      return;
+    }
+    const selected = new Set(chats.filter((chat) => preselection.has(chat.id)).map((chat) => chat.id));
+    const dlg = modal("历史对话",
+      '<div class="chat-list-tools"><label><input type="checkbox" class="chat-select-all"> 全选</label>' +
+      '<button type="button" class="btn small chat-danger chat-delete-selected">删除所选</button></div>' +
+      '<ul class="chat-history-rows"></ul>');
+    const rows = dlg.querySelector(".chat-history-rows");
+    const all = dlg.querySelector(".chat-select-all");
+    const remove = dlg.querySelector(".chat-delete-selected");
+    const checks = [];
+    function updateSelection() {
+      all.checked = selected.size === chats.length;
+      all.indeterminate = selected.size > 0 && !all.checked;
+      remove.disabled = selected.size === 0;
+      remove.textContent = selected.size ? "删除所选（" + selected.size + "）" : "删除所选";
+    }
+    for (const chat of chats) {
+      const row = document.createElement("li");
+      const check = document.createElement("input");
+      check.type = "checkbox";
+      check.checked = selected.has(chat.id);
+      check.setAttribute("aria-label", "选择对话 " + chat.title);
+      check.onchange = () => {
+        if (check.checked) selected.add(chat.id);
+        else selected.delete(chat.id);
+        updateSelection();
+      };
+      checks.push(check);
+      const pick = document.createElement("button");
+      pick.type = "button";
+      pick.className = "chat-open";
+      if (chat.id === activeChat) pick.setAttribute("aria-current", "true");
+      const label = document.createElement("span");
+      label.textContent = chat.title;
+      const time = document.createElement("time");
+      if (Math.abs(chat.last) <= 8.64e15) time.textContent = date.format(chat.last);
+      pick.append(label, time);
+      pick.onclick = () => {
+        if (isDeletedChat(chat.id)) return openHistory(selected);
+        close();
+        openChat(chat.id, true);
+      };
+      const drop = document.createElement("button");
+      drop.type = "button";
+      drop.className = "btn small chat-danger";
+      drop.textContent = "删除";
+      drop.setAttribute("aria-label", "删除对话 " + chat.title);
+      drop.onclick = () => confirmDeletion([chat.id], selected);
+      row.append(check, pick, drop);
+      rows.append(row);
+    }
+    all.onchange = () => {
+      selected.clear();
+      if (all.checked) for (const chat of chats) selected.add(chat.id);
+      for (const check of checks) check.checked = all.checked;
+      updateSelection();
+    };
+    remove.onclick = () => confirmDeletion([...selected], selected);
+    updateSelection();
+  }
+
+  history.onclick = () => openHistory();
+  create.onclick = async () => {
+    create.disabled = true;
+    notice.textContent = "";
+    const id = newChatId();
+    try {
+      await saveEvent("dialogue-thread", { thread: id });
+      if (mounted) openChat(id, true);
+    } catch {
+      if (mounted) notice.textContent = "未能新建对话，请重试。";
+    } finally {
+      create.disabled = false;
+    }
+  };
+  const unsubscribe = onTutorHistory(() => {
+    if (isDeletedChat(activeChat)) openChat(defaultChat());
+    else refreshTitle();
+  });
+  openChat(!activeChat || isDeletedChat(activeChat) ? defaultChat() : activeChat);
+  return () => {
+    mounted = false;
+    unsubscribe();
+    dispose?.();
+  };
+}
+
 export function tutorShell(back) {
   const controls = back
     ? '<div class="tools"><button class="btn small" data-action="tutor-back">← ' +
@@ -205,12 +363,12 @@ function turnNode(thread, row) {
   return { content, meta };
 }
 export function mountTutor(host, spec = generalTutor, inline = false) {
-  const thread = threads.get(spec.id) || {
-    messages: savedEvents()
-      .filter((e) => e.kind === "dialogue" && e.data.thread === spec.id)
-      .sort((a, b) => a.at - b.at || a.id.localeCompare(b.id))
-      .slice(-18)
-      .flatMap((e) => [
+  const chat = isChatThread(spec.id);
+  const records = savedEvents()
+    .filter((e) => e.kind === "dialogue" && e.data.thread === spec.id)
+    .sort((a, b) => a.at - b.at || a.id.localeCompare(b.id));
+  const thread = (!chat && threads.get(spec.id)) || {
+    messages: (chat ? records : records.slice(-18)).flatMap((e) => [
         { role: "user", content: e.data.question },
         {
           role: "assistant",
@@ -219,13 +377,11 @@ export function mountTutor(host, spec = generalTutor, inline = false) {
           interrupted: !!e.data.interrupted,
         },
       ]),
-    lastOpened: savedEvents()
-      .filter((e) => e.kind === "dialogue" && e.data.thread === spec.id)
-      .sort((a, b) => b.at - a.at)[0]?.data.mode,
+    lastOpened: records.at(-1)?.data.mode,
     draft: "",
     model: "auto",
   };
-  threads.set(spec.id, thread);
+  if (!chat) threads.set(spec.id, thread);
   if (threads.size > 35) threads.delete(threads.keys().next().value);
   let alive = true,
     controller = null,
@@ -233,7 +389,7 @@ export function mountTutor(host, spec = generalTutor, inline = false) {
   const pick =
     spec.mode === "hint"
       ? ["给我一个起点", "我可以用哪个条件自查？"]
-      : spec.id === "自由答疑"
+      : chat
         ? generic
         : spec.context.模型观察
           ? ["我应该改变哪个参数？", "换一个例子会怎样？"]
@@ -376,10 +532,9 @@ export function mountTutor(host, spec = generalTutor, inline = false) {
       paintAnswer(content, row.content, !row.interrupted);
     return { content, meta };
   }
-  if (spec.id === "自由答疑") host.querySelector(".tutor-heading")?.remove();
+  if (chat) host.querySelector(".tutor-heading")?.remove();
   (inline ? thread.messages.slice(-2) : thread.messages).forEach(display);
-  if (spec.id === "自由答疑" && thread.messages.length === 0)
-    host.classList.add("tutor-empty");
+  host.classList.toggle("tutor-empty", chat && thread.messages.length === 0);
   input.value = thread.draft;
   const button = (label, fn) => {
     const b = document.createElement("button");
@@ -437,7 +592,7 @@ export function mountTutor(host, spec = generalTutor, inline = false) {
     const user = { role: "user", content: question },
       bot = { role: "assistant", content: "", meta: "等待模型" };
     thread.messages.push(user, bot);
-    if (thread.messages.length > 36) thread.messages.splice(0, 2);
+    if (!chat && thread.messages.length > 36) thread.messages.splice(0, 2);
     const turn = display(user);
     if (image) {
       const img = document.createElement("img");

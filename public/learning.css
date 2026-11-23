@@ -226,8 +226,70 @@
   max-width: 900px;
   margin-inline: auto;
 }
-.tutor-work.tutor-empty .tutor-thread:empty {
+.tutor-work.tutor-empty .tutor-thread:empty,
+.chat-body.tutor-empty .tutor-thread:empty {
   display: none;
+}
+.chat-toolbar,
+.chat-list-tools {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: .65rem;
+}
+.chat-toolbar {
+  margin-block-end: .9rem;
+}
+.chat-caption {
+  min-width: 0;
+  flex: 1 1 7rem;
+  font-size: .9rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.chat-notice:empty {
+  display: none;
+}
+.chat-list-tools {
+  justify-content: space-between;
+  margin-block-end: .6rem;
+}
+.chat-history-rows {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.chat-history-rows li {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: .65rem;
+  border-bottom: 1px solid var(--line);
+}
+.chat-open {
+  color: inherit;
+  background: transparent;
+  border: 0;
+  border-radius: .45rem;
+  text-align: left;
+  padding: .65rem .5rem;
+  cursor: pointer;
+}
+.chat-open:hover,
+.chat-open[aria-current="true"] {
+  background: #eef4ee;
+}
+.chat-open span {
+  display: block;
+  overflow-wrap: anywhere;
+}
+.chat-open time {
+  font-size: .85rem;
+  opacity: .75;
+}
+.btn.chat-danger {
+  color: #923825;
 }
 .tutor-empty .tutor-heading {
   margin-bottom: 15px;

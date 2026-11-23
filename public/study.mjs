@@ -50,6 +50,7 @@ import {
 import {
   tutorShell,
   mountTutor,
+  mountChatWorkspace,
   generalTutor,
   questionTutor,
   labTutor,
@@ -1503,7 +1504,9 @@ function render() {
       history.replaceState({}, "", labPath(labState));
     });
   if (view === "tutor")
-    disposePage = mountTutor(get("tutor-main"), tutorContext);
+    disposePage = tutorContext === generalTutor
+      ? mountChatWorkspace(get("tutor-main"))
+      : mountTutor(get("tutor-main"), tutorContext);
   if (view === "quiz" && session) {
     tickOn();
     const q = roundQuestion(session.index);

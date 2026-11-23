@@ -1,7 +1,11 @@
+import { chatPrefix, isChatThread } from "./tutor-history.mjs";
+
 const records = new Map();
 const drafts = new Map();
 const pending = new Map();
 const locked = new Set();
+const chatListeners = new Set();
+const deletedChats = new Set();
 let account,
   cursor = 0,
   pulling,
@@ -11,6 +15,31 @@ let account,
 export const events = () => Array.from(records.values());
 export const identity = () => account ?? {};
 export const draft = (kind) => drafts.get(kind)?.data ?? null;
+export const isDeletedChat = (id) => deletedChats.has(id);
+export function onTutorHistory(callback) {
+  chatListeners.add(callback);
+  return () => chatListeners.delete(callback);
+}
+const isChatEvent = (event) =>
+  (event.kind === "dialogue" || event.kind === "dialogue-thread") &&
+  isChatThread(event.data.thread);
+
+function acceptEvent(row) {
+  if (row.kind === "dialogue-delete") {
+    const removed = row.data.threads.filter((id) => !deletedChats.has(id));
+    if (!removed.length) return false;
+    for (const id of removed) deletedChats.add(id);
+    for (const [id, old] of records)
+      if (isChatEvent(old) && isDeletedChat(old.data.thread)) records.delete(id);
+  } else {
+    if (records.has(row.id)) return false;
+    if (isChatEvent(row) && isDeletedChat(row.data.thread)) return false;
+    records.set(row.id, row);
+  }
+  if (row.kind === "dialogue-delete" || isChatEvent(row))
+    for (const notify of chatListeners) notify();
+  return true;
+}
 function invalidate() {
   document.getElementById("studio")?.replaceChildren();
   location.reload();
@@ -42,12 +71,7 @@ async function pull(firstPage) {
   while (more) {
     const page = firstPage ?? await api("/api/study?cursor=" + cursor);
     firstPage = null;
-    for (const row of page.events) {
-      if (!records.has(row.id)) {
-        records.set(row.id, row);
-        changed = true;
-      }
-    }
+    for (const row of page.events) if (acceptEvent(row)) changed = true;
     cursor = page.cursor;
     more = page.more;
   }
@@ -96,21 +120,31 @@ export async function add(kind, data, id = crypto.randomUUID()) {
 }
 async function putEvent(row) {
   try {
-    await api("/api/study", {
+    const result = await api("/api/study", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(row),
     });
-    records.set(row.id, row);
+    acceptEvent(result.event ?? row);
     if (!pending.size) onStatus("已保存至账号");
   } catch (e) {
+    if (e.conflict && isChatEvent(row)) void sync();
     onStatus("保存失败，请重试");
     throw e;
   }
 }
 export async function restore(rows) {
+  const restoredChats = new Map();
   for (const { kind, data, id, at } of rows)
-    if (!records.has(id)) await putEvent({ kind, data, id, at });
+    if (!records.has(id)) {
+      const row = { kind, data, id, at };
+      if (isChatEvent(row) && isDeletedChat(data.thread)) {
+        if (!restoredChats.has(data.thread))
+          restoredChats.set(data.thread, chatPrefix + crypto.randomUUID());
+        row.data = { ...data, thread: restoredChats.get(data.thread) };
+      }
+      await putEvent(row);
+    }
 }
 export function saveDraft(kind, data) {
   if (!account || locked.has(kind)) return;
