@@ -1,0 +1,262 @@
+.elab-root {
+  --e-green: #16674f;
+  --e-ink: #213d32;
+  --e-muted: #536c60;
+  --e-line: #cbded1;
+  --e-pale: #f1f7f1;
+  color: var(--e-ink);
+  font: inherit;
+  font-size: 1rem;
+  line-height: 1.6;
+  width: 100%;
+  min-width: 0;
+}
+.elab-root * {
+  box-sizing: border-box;
+}
+.elab-root h3,
+.elab-root h4,
+.elab-root p {
+  margin: 0;
+  text-align: start;
+}
+.elab-root h3 {
+  font-size: 1.27rem;
+  font-weight: 750;
+  line-height: 1.4;
+  letter-spacing: 0;
+  color: var(--e-ink);
+}
+.elab-root h3 span {
+  font-size: 0.95rem;
+  color: var(--e-muted);
+  font-weight: 550;
+  margin-left: 0.4em;
+  white-space: nowrap;
+}
+.elab-root h4 {
+  font-size: 1rem;
+  color: var(--e-ink);
+  font-weight: 710;
+  line-height: 1.4;
+  margin-bottom: 0.5rem;
+}
+.elab-root sup,
+.elab-root sub {
+  font-size: 0.76em;
+  line-height: 0;
+}
+.elab-root button {
+  font-family: inherit;
+  letter-spacing: normal;
+  cursor: pointer;
+  touch-action: manipulation;
+  box-shadow: none;
+}
+.elab-switch {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.42rem;
+}
+.elab-button {
+  border: 1px solid var(--e-line);
+  border-radius: 0.55rem;
+  background: white;
+  color: #365246;
+  font-size: 0.9rem;
+  padding: 0.38rem 0.78rem;
+  min-height: 37px;
+  line-height: 1.4;
+}
+.elab-button:hover,
+.elab-cell:hover {
+  border-color: #508e73;
+  background: #e6f3e8;
+}
+.elab-button[aria-pressed="true"],
+.elab-cell[aria-pressed="true"] {
+  color: white;
+  background: var(--e-green);
+  border-color: var(--e-green);
+  font-weight: 700;
+}
+.elab-root button:focus-visible {
+  outline: 3px solid #b27318;
+  outline-offset: 2px;
+}
+.elab-head {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin: 0.95rem 0 0.75rem;
+}
+.elab-head p,
+.elab-cap,
+.elab-note,
+.elab-hint {
+  color: var(--e-muted);
+  font-size: 0.89rem;
+}
+.elab-cap {
+  line-height: 1.55;
+}
+.elab-duo,
+.elab-terms-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.65rem;
+}
+.elab-panel {
+  border: 1px solid var(--e-line);
+  border-radius: 0.85rem;
+  padding: 0.85rem;
+  min-width: 0;
+  background: linear-gradient(145deg, #fff, #f5faf5);
+}
+.elab-energy,
+.elab-phase {
+  width: 100%;
+  height: clamp(185px, 22vw, 255px);
+  display: block;
+}
+.elab-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.42rem;
+  margin: 0.85rem 0 0.4rem;
+}
+.elab-group strong {
+  font-size: 0.94rem;
+  font-weight: 700;
+}
+.elab-inline {
+  font-size: 0.94rem;
+  padding: 0.2rem 0;
+}
+.elab-coeff {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem 0.48rem;
+  margin: 0.3rem 0;
+}
+.elab-coeff span {
+  display: inline-flex;
+  gap: 0.35rem;
+  align-items: baseline;
+  border: 1px solid var(--e-line);
+  border-radius: 0.36rem;
+  padding: 0.08rem 0.43rem;
+  font-size: 0.85rem;
+  color: var(--e-muted);
+  font-variant-numeric: tabular-nums;
+}
+.elab-coeff b {
+  font-weight: 600;
+  color: var(--e-ink);
+}
+.elab-root .elab-note,
+.elab-root .elab-hint {
+  margin-top: 0.5rem;
+}
+.elab-summary {
+  margin-top: 0.85rem;
+  background: #eaf4e9;
+  border-left: 3px solid #4e9473;
+  border-radius: 0 0.55rem 0.55rem 0;
+  padding: 0.7rem 0.85rem;
+  color: #345d47;
+}
+.elab-summary p {
+  font-size: 0.94rem;
+  margin-top: 0.2rem;
+}
+.elab-scroll {
+  overflow-x: auto;
+  max-width: 100%;
+  padding: 0.2rem 0;
+}
+.elab-table {
+  border-collapse: separate;
+  border-spacing: 2px;
+  margin: 0.32rem 0 0;
+  width: 100%;
+  min-width: 200px;
+  font-size: 0.85rem;
+  font-variant-numeric: tabular-nums;
+}
+.elab-table caption {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+}
+.elab-table td,
+.elab-table th {
+  padding: 0.15rem 0.1rem;
+  text-align: center;
+  line-height: 1.35;
+}
+.elab-table th {
+  color: #426958;
+  font-weight: 600;
+  font-size: 0.82rem;
+}
+.elab-table th:first-child {
+  white-space: nowrap;
+}
+.elab-table td {
+  border: 1px solid transparent;
+  border-radius: 0.38rem;
+}
+.elab-table .elab-covered {
+  background: #dbf0dc;
+  border-color: #a3d1a8;
+}
+.elab-cell {
+  display: block;
+  width: 100%;
+  min-width: 29px;
+  min-height: 32px;
+  padding: 0.15rem;
+  border: 1px solid #d4e1d6;
+  border-radius: 0.32rem;
+  background: transparent;
+  color: var(--e-ink);
+  font-weight: 650;
+  font-size: 0.89rem;
+  font-variant-numeric: tabular-nums;
+}
+.elab-zero {
+  color: #7a8c80;
+}
+.elab-spin {
+  font-family: system-ui, sans-serif;
+  color: var(--e-green);
+  font-weight: 700;
+  font-size: 1.08rem;
+}
+.elab-config-table tbody td {
+  background: #eef5ed;
+}
+@media (max-width: 720px) {
+  .elab-duo,
+  .elab-terms-grid {
+    grid-template-columns: 1fr;
+  }
+  .elab-phase,
+  .elab-energy {
+    height: 205px;
+  }
+  .elab-panel {
+    padding: 0.7rem;
+  }
+  .elab-button {
+    min-height: 39px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .elab-root * {
+    scroll-behavior: auto;
+  }
+}

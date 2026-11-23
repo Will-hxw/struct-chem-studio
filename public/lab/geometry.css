@@ -1,0 +1,233 @@
+.geom-root {
+  --geom-fg: #163e32;
+  --geom-line: #d7e4d8;
+  --geom-sand: #f5f8f1;
+  color: var(--geom-fg);
+  display: grid;
+  gap: 0.82rem;
+  font-family: inherit;
+  min-width: 0;
+}
+.geom-choices {
+  display: flex;
+  align-items: flex-end;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+.geom-field {
+  display: grid;
+  gap: 0.28rem;
+  min-width: 0;
+  flex: 1 1 12rem;
+  color: #4b6659;
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+.geom-select {
+  min-width: 0;
+  width: 100%;
+  height: 2.7rem;
+  border: 1px solid #bed3c2;
+  background: #fff;
+  border-radius: 0.57rem;
+  padding: 0.45rem 1.8rem 0.45rem 0.67rem;
+  color: var(--geom-fg);
+  font: inherit;
+  font-weight: 500;
+}
+.geom-primary,
+.geom-tool,
+.geom-btn {
+  border: 1px solid #bfd1c1;
+  border-radius: 0.55rem;
+  padding: 0.5rem 0.85rem;
+  color: var(--geom-fg);
+  background: #fff;
+  font: inherit;
+  cursor: pointer;
+  line-height: 1.3;
+}
+.geom-primary {
+  min-height: 2.7rem;
+  background: #245e48;
+  border-color: #245e48;
+  color: white;
+  font-size: 0.94rem;
+  font-weight: 600;
+}
+.geom-primary:hover {
+  background: #174c38;
+}
+.geom-board {
+  height: clamp(17rem, 39vw, 24rem);
+  min-width: 0;
+  position: relative;
+  overflow: hidden;
+  border: 1px solid var(--geom-line);
+  border-radius: 0.9rem;
+  background-color: #edf4e9;
+  background-image:
+    linear-gradient(rgba(111, 143, 112, 0.08) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(111, 143, 112, 0.08) 1px, transparent 1px);
+  background-size: 24px 24px;
+}
+.geom-canvas {
+  display: block;
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  cursor: grab;
+  touch-action: none;
+  border-radius: 0.85rem;
+}
+.geom-canvas:active {
+  cursor: grabbing;
+}
+.geom-canvas:focus-visible {
+  outline: 2px solid #326c54;
+  outline-offset: -3px;
+}
+.geom-tag,
+.geom-tools {
+  position: absolute;
+  top: 0.65rem;
+  z-index: 1;
+}
+.geom-tag {
+  left: 0.65rem;
+  padding: 0.24rem 0.52rem;
+  border: 1px solid #d1dfcd;
+  border-radius: 0.37rem;
+  color: #315d46;
+  line-height: 1.4;
+  background: rgba(248, 251, 243, 0.91);
+  font-size: 0.83rem;
+  font-weight: 650;
+  pointer-events: none;
+}
+.geom-tools {
+  right: 0.65rem;
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+.geom-tool {
+  min-height: 2rem;
+  min-width: 2rem;
+  background: #fbfdf6ef;
+  font-size: 0.9rem;
+  padding: 0.25rem 0.45rem;
+}
+.geom-tool:hover {
+  background: #e3eddf;
+  border-color: #94b099;
+}
+.geom-switches,
+.geom-legend {
+  display: flex;
+  gap: 0.55rem 1.05rem;
+  flex-wrap: wrap;
+  align-items: center;
+}
+.geom-check,
+.geom-gestures,
+.geom-legend-item {
+  line-height: 1.45;
+  font-size: 0.875rem;
+}
+.geom-check {
+  display: inline-flex;
+  gap: 0.36rem;
+  align-items: center;
+  cursor: pointer;
+}
+.geom-check input {
+  margin: 0;
+  width: 1rem;
+  height: 1rem;
+  accent-color: #2b674f;
+}
+.geom-gestures {
+  margin-left: auto;
+  color: #526c5e;
+}
+.geom-legend-item {
+  display: inline-flex;
+  gap: 0.36rem;
+  align-items: center;
+  color: #3d5b4b;
+}
+.geom-swatch {
+  display: inline-block;
+  width: 0.72rem;
+  height: 0.72rem;
+  border-radius: 50%;
+  border: 1px solid #657d646b;
+}
+.geom-hint,
+.geom-result p {
+  font-size: 0.94rem;
+  line-height: 1.65;
+  margin: 0;
+}
+.geom-result {
+  padding: 0.75rem 0.88rem;
+  border: 1px solid var(--geom-line);
+  background: #f4f8f1;
+  border-radius: 0.65rem;
+}
+.geom-result strong {
+  display: block;
+  font-size: 1rem;
+  margin-bottom: 0.14rem;
+}
+.geom-valid {
+  color: #215f42;
+}
+.geom-invalid {
+  color: #90532f;
+}
+.geom-select:focus-visible,
+.geom-tool:focus-visible,
+.geom-primary:focus-visible,
+.geom-check input:focus-visible {
+  outline: 2px solid #367c5c;
+  outline-offset: 2px;
+}
+@media (max-width: 620px) {
+  .geom-choices {
+    gap: 0.45rem;
+  }
+  .geom-field {
+    flex: 1 1 9rem;
+  }
+  .geom-primary {
+    min-height: 2.45rem;
+  }
+  .geom-gestures {
+    margin-left: 0;
+  }
+  .geom-tools {
+    gap: 0.15rem;
+  }
+  .geom-board {
+    height: 18rem;
+  }
+  .geom-switches,
+  .geom-legend {
+    gap: 0.45rem 0.7rem;
+  }
+}
+@media (max-width: 390px) {
+  .geom-board {
+    height: 16rem;
+  }
+  .geom-tool {
+    min-width: 1.75rem;
+    padding: 0.2rem 0.34rem;
+  }
+  .geom-tag {
+    font-size: 0.78rem;
+  }
+}

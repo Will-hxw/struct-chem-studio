@@ -1,0 +1,73 @@
+* {
+  box-sizing: border-box;
+}
+html {
+  font-size: 16px;
+  scroll-behavior: smooth;
+}
+body {
+  margin: 0;
+  color: #182e25;
+  background: #f6f8f6;
+  font-family:
+    "Times New Roman", "Microsoft YaHei", "微软雅黑", "Liberation Serif",
+    "PingFang SC", "Noto Sans CJK SC", sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+button,
+input,
+select,
+textarea {
+  font: inherit;
+}
+button {
+  cursor: pointer;
+}
+button:focus-visible,
+a:focus-visible,
+summary:focus-visible {
+  outline: 3px solid #e69742;
+  outline-offset: 3px;
+}
+button[disabled] {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+button {
+  color: inherit;
+}
+a {
+  color: #236645;
+}
+svg {
+  display: inline-block;
+  flex-shrink: 0;
+}
+h1,
+h2,
+h3,
+h4,
+p {
+  margin: 0;
+}
+button,
+input,
+textarea,
+select {
+  font-family: inherit;
+}
+button {
+  transition:
+    background 0.15s,
+    box-shadow 0.15s,
+    transform 0.15s;
+}
+::selection {
+  background: #c8e8b8;
+}
+button,
+input,
+textarea,
+select {
+  touch-action: manipulation;
+}

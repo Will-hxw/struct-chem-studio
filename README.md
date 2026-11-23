@@ -1,0 +1,80 @@
+# 结构化学 · SC Lab
+
+面向重庆大学结构化学期末复习的刷题工作台。作者 **Hua Xiaowei —— ZJU**。
+
+**在线使用** [chem.xiaoweihua.cn](https://chem.xiaoweihua.cn/)
+
+## 复习功能
+
+- **统一题库** 467 道题，覆盖 8 个章节与专题。题目按原题、改编题、原创题标注，可按章节、题型和知识点筛选。
+- **分题型练习** 支持单选、多选、判断、填空、计算、简答、推导和作图。可查看提示、逐步解析、评分点与易错点。
+- **刷题与模考** 练习中均衡打乱选择题答案位置，限时模拟支持答题卡、交卷和书面题自评。
+- **错题与下一轮** 根据做题覆盖率、正确率、最近答错、错因与用时生成可直接开始的题单。收藏、草稿和进度跟随账号。
+- **结构可视化** 交互查看对称操作、原子轨道、波函数、分子轨道与共轭结构。
+- **AI 答疑** 支持题内提示、追问、错因分析和粘贴截图。题库内置提示与解析可直接阅读。
+
+## 题库
+
+| 类型 | 道数 |
+| --- | ---: |
+| 原题 | 276 |
+| 改编题 | 46 |
+| 原创题 | 145 |
+| **总计** | **467** |
+
+题库整合了上传的 14 套卷面资料。393 条题目记录逐条与现有题库比对，其中 392 条归并到 271 道代表题。余下 1 条的历史表述有误，由同一考点的准确题目覆盖。校订后的原题继续沿用「原题」标签。题干图随题显示，解答图在解析中展示。题库使用稳定题号关联历史作答和收藏。
+
+## 本地运行
+
+需要 Node.js 22.13 或更高版本。首次运行时，在项目根目录执行：
+
+```bash
+npm run install:ci
+npm run build
+
+for migration in drizzle/*.sql; do
+  node --import ./scripts/sites-env.mjs ./node_modules/wrangler/bin/wrangler.js \
+    d1 execute DB --local --config dist/server/wrangler.json \
+    --persist-to .wrangler/state --file "$migration" || exit 1
+done
+
+npm start
+```
+
+以上 SQL 命令用于初始化一份空的本地 D1 数据库。后续开发可用 `npm run dev` 启动热更新。注册与找回密码需要正在工作的 Gmail 发信配置。AI 答疑至少需要配置一个模型服务的密钥。
+
+### 运行配置
+
+在本地使用 Worker 的 `.dev.vars`，生产环境在 Sites 的运行配置中设置。生产数据库绑定名为 `DB`。
+
+| 配置 | 用途 |
+| --- | --- |
+| `GMAIL_SENDER` | 验证码发件邮箱 |
+| `GMAIL_CLIENT_ID`、`GMAIL_CLIENT_SECRET` | Gmail OAuth 客户端 |
+| `GMAIL_TOKEN_KEY` | 加密库存 refresh token 的 32 字节密钥，以 64 位小写十六进制传入 |
+| `GMAIL_REDIRECT_URI` | 管理员授权回调的完整 HTTPS 地址，须与 Google OAuth 客户端登记值一致 |
+| `GMAIL_REFRESH_TOKEN` | 可选，直接从运行环境提供已授权的发信令牌 |
+| `OPENAI_API_KEY`、`DEEPSEEK_API_KEY` | 可选，开启对应服务的 AI 答疑 |
+
+如使用网站管理入口配置 Gmail 发信，在受信的 HTTPS 部署上访问 `/api/gmail/connect`，用配置的发件邮箱完成授权。成功后，站点把 Gmail 发信令牌加密保存到 D1。
+
+### API 与账号
+
+浏览器向同源的 `/api/tutor` 发送题目和追问。Worker 校验登录、题目载荷及调用配额，再使用服务端凭证请求所配置的模型。客户端接收正文和固定格式的状态消息。账号、草稿、收藏和练习记录由 D1 保存，按账号隔离。
+
+## 项目结构
+
+| 目录 | 内容 |
+| --- | --- |
+| `app/` | 登录页、工作台入口与 API |
+| `public/` | 练习、题型突破、模考、学情诊断、可视化、AI 界面与公式排版 |
+| `lib/course/` | 统一题库、兼容旧记录的数据与经过裁切或重绘的题图 |
+| `lib/` | 账号验证、Gmail 发信与 AI 转发 |
+| `db/`、`drizzle/` | D1 的数据模型和迁移 |
+| `worker/`、`scripts/` | Worker 入口和构建脚本 |
+
+## 部署
+
+线上网站使用 **ChatGPT Sites + Cloudflare Worker + D1**。仓库保存源码，发布由 Sites 管理。发布前执行 `npm run build`，再在对应 Sites 项目保存版本、部署并检查自定义域名。更新独立 GitHub 仓库后，需同步源码到 Sites 才会更新线上版本。
+
+原始扫描卷、用户学习数据和运行凭证存放在各自的管理环境中。项目中的第三方组件沿用随附的许可证。
