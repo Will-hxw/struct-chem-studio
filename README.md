@@ -1,6 +1,6 @@
 # 结构化学 · SC Lab
 
-面向重庆大学结构化学期末复习的刷题工作台。作者 **Hua Xiaowei —— ZJU**。
+面向重庆大学结构化学期末复习的刷题工作台。
 
 **在线使用** [chem.xiaoweihua.cn](https://chem.xiaoweihua.cn/)
 
@@ -22,8 +22,6 @@
 | 原创题 | 145 |
 | **总计** | **467** |
 
-题库整合了上传的 14 套卷面资料。393 条题目记录逐条与现有题库比对，其中 392 条归并到 271 道代表题。余下 1 条的历史表述有误，由同一考点的准确题目覆盖。校订后的原题继续沿用「原题」标签。题干图随题显示，解答图在解析中展示。题库使用稳定题号关联历史作答和收藏。
-
 ## 本地运行
 
 需要 Node.js 22.13 或更高版本。首次运行时，在项目根目录执行：
@@ -33,8 +31,7 @@ npm run install:ci
 npm run build
 
 for migration in drizzle/*.sql; do
-  node --import ./scripts/sites-env.mjs ./node_modules/wrangler/bin/wrangler.js \
-    d1 execute DB --local --config dist/server/wrangler.json \
+  npx wrangler d1 execute DB --local --config dist/server/wrangler.json \
     --persist-to .wrangler/state --file "$migration" || exit 1
 done
 
@@ -45,7 +42,7 @@ npm start
 
 ### 运行配置
 
-在本地使用 Worker 的 `.dev.vars`，生产环境在 Sites 的运行配置中设置。生产数据库绑定名为 `DB`。
+本地开发通过 `.dev.vars` 配置环境变量。生产环境通过服务端运行配置设置凭证和变量，数据库绑定名为 `DB`。
 
 | 配置 | 用途 |
 | --- | --- |
@@ -72,9 +69,3 @@ npm start
 | `lib/` | 账号验证、Gmail 发信与 AI 转发 |
 | `db/`、`drizzle/` | D1 的数据模型和迁移 |
 | `worker/`、`scripts/` | Worker 入口和构建脚本 |
-
-## 部署
-
-线上网站使用 **ChatGPT Sites + Cloudflare Worker + D1**。仓库保存源码，发布由 Sites 管理。发布前执行 `npm run build`，再在对应 Sites 项目保存版本、部署并检查自定义域名。更新独立 GitHub 仓库后，需同步源码到 Sites 才会更新线上版本。
-
-原始扫描卷、用户学习数据和运行凭证存放在各自的管理环境中。项目中的第三方组件沿用随附的许可证。
