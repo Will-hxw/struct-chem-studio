@@ -207,7 +207,8 @@ async function* upstream(
         };
   const res = await fetch(endpoints[model.provider], {
     method: "POST",
-    redirect: "error",
+    // Workers returns redirects in manual mode. The status check below rejects them.
+    redirect: "manual",
     signal,
     headers: {
       "Content-Type": "application/json",
